@@ -1,71 +1,148 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const form = document.getElementById("contactForm");
-  const statusEl = document.getElementById("contactStatus");
-  const submitBtn = document.getElementById("contactSubmit");
+  const WORKER_URL = "https://wavegames-worker.salman-khattapp.workers.dev";
 
-  // Quick proof the script is loaded
-  console.log("[contact.js] loaded", { form });
+  function bindForm({
+    formId,
+    statusId,
+    nameId,
+    emailId,
+    subjectId,
+    messageId,
+  }) {
+    const form = document.getElementById(formId);
+    if (!form) return;
 
-  if (!form) return;
+    const statusEl = document.getElementById(statusId);
 
-  const setStatus = (msg, ok = true) => {
-    if (!statusEl) return;
-    statusEl.textContent = msg;
-    statusEl.style.color = ok ? "green" : "red";
-  };
-
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const payload = {
-      name: document.getElementById("name")?.value.trim() || "",
-      email: document.getElementById("email")?.value.trim() || "",
-      subject: document.getElementById("subject")?.value.trim() || "",
-      message: document.getElementById("message")?.value.trim() || "",
+    const setStatus = (msg, ok = true) => {
+      if (!statusEl) return;
+      statusEl.textContent = msg;
+      statusEl.style.color = ok ? "green" : "red";
     };
 
-    // Basic validation
-    if (!payload.name || !payload.email || !payload.subject || !payload.message) {
-      setStatus("Please fill in all fields.", false);
-      return;
-    }
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-    // MUST be your deployed Worker URL
-    const WORKER_URL = "https://wavegames-worker.salman-khattapp.workers.dev";
+      const payload = {
+        name: document.getElementById(nameId)?.value.trim() || "",
+        email: document.getElementById(emailId)?.value.trim() || "",
+        subject: document.getElementById(subjectId)?.value.trim() || "",
+        message: document.getElementById(messageId)?.value.trim() || "",
+      };
 
-    try {
-      submitBtn && (submitBtn.disabled = true);
-      setStatus("Sending message...");
-
-      const res = await fetch(WORKER_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      // Read as text first (handles non-JSON error pages)
-      const text = await res.text();
-      let json = null;
-      try { json = JSON.parse(text); } catch {}
-
-      if (!res.ok) {
-        console.error("[contact.js] Worker error:", res.status, text);
-        setStatus(`Failed to send, please try again later.`, false);
+      if (
+        !payload.name ||
+        !payload.email ||
+        !payload.subject ||
+        !payload.message
+      ) {
+        setStatus("Please fill in all fields.", false);
         return;
       }
 
-      if (json && json.success) {
+      try {
+        setStatus("Sending message...");
+
+        const res = await fetch(WORKER_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const text = await res.text();
+        let json;
+        try {
+          json = JSON.parse(text);
+        } catch {}
+
+        if (!res.ok || !json?.success) {
+          console.error("[contact] error:", res.status, text);
+          setStatus("Failed to send message. Please try again.", false);
+          return;
+        }
+
         setStatus("Message sent successfully!");
         form.reset();
-      } else {
-        console.error("[contact.js] Unexpected response:", text);
-        setStatus("Failed to send. Unexpected response. Check console.", false);
+      } catch (err) {
+        console.error("[contact] network error:", err);
+        setStatus("Network error. Please try again later.", false);
       }
-    } catch (err) {
-      console.error("[contact.js] Network error:", err);
-      setStatus("Network error. Please try again later.", false);
-    } finally {
-      submitBtn && (submitBtn.disabled = false);
-    }
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const WORKER_URL = "https://wavegames-worker.salman-khattapp.workers.dev";
+
+    const newsletterForm = document.getElementById("newsletterForm");
+    if (!newsletterForm) return;
+
+    const emailInput = document.getElementById("newsletterEmail");
+    const statusEl = document.getElementById("newsletterStatus");
+
+    const setStatus = (msg, ok = true) => {
+      statusEl.textContent = msg;
+      statusEl.style.color = ok ? "green" : "red";
+    };
+
+    newsletterForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const email = emailInput.value.trim();
+      if (!email) {
+        setStatus("Please enter your email address.", false);
+        return;
+      }
+
+      try {
+        setStatus("Subscribing...");
+
+        const res = await fetch(WORKER_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "newsletter",
+            email,
+          }),
+        });
+
+        const text = await res.text();
+        let json;
+        try {
+          json = JSON.parse(text);
+        } catch {}
+
+        if (!res.ok || !json?.success) {
+          console.error("[newsletter] error:", res.status, text);
+          setStatus("Subscription failed. Please try again.", false);
+          return;
+        }
+
+        setStatus("Successfully subscribed!");
+        newsletterForm.reset();
+      } catch (err) {
+        console.error("[newsletter] network error:", err);
+        setStatus("Network error. Please try again later.", false);
+      }
+    });
+  });
+
+  // Contact page form
+  bindForm({
+    formId: "contactForm",
+    statusId: "contactStatus",
+    nameId: "name",
+    emailId: "email",
+    subjectId: "subject",
+    messageId: "message",
+  });
+
+  // Home page form
+  bindForm({
+    formId: "homeContactForm",
+    statusId: "homeContactStatus",
+    nameId: "contactName",
+    emailId: "contactEmail",
+    subjectId: "contactSubject",
+    messageId: "contactMessage",
   });
 });
