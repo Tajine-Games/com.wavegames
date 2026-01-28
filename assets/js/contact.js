@@ -1,7 +1,38 @@
 document.addEventListener("DOMContentLoaded", () => {
   const WORKER_URL = "https://wavegames-worker.salman-khattapp.workers.dev";
 
-  function bindForm({
+  async function postJson(payload) {
+    const res = await fetch(WORKER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const text = await res.text();
+    let json = null;
+    try {
+      json = JSON.parse(text);
+    } catch {}
+
+    return { res, text, json };
+  }
+
+  function makeStatus(statusEl) {
+    return (msg, ok = true) => {
+      if (!statusEl) return;
+      statusEl.textContent = msg;
+      statusEl.style.color = ok ? "green" : "red";
+    };
+  }
+
+  function setButtonDisabled(form, disabled) {
+    const btn =
+      form.querySelector('button[type="submit"]') ||
+      form.querySelector('input[type="submit"]');
+    if (btn) btn.disabled = disabled;
+  }
+
+  function bindContactForm({
     formId,
     statusId,
     nameId,
@@ -13,12 +44,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!form) return;
 
     const statusEl = document.getElementById(statusId);
-
-    const setStatus = (msg, ok = true) => {
-      if (!statusEl) return;
-      statusEl.textContent = msg;
-      statusEl.style.color = ok ? "green" : "red";
-    };
+    const setStatus = makeStatus(statusEl);
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -41,22 +67,13 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       try {
+        setButtonDisabled(form, true);
         setStatus("Sending message...");
 
-        const res = await fetch(WORKER_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-
-        const text = await res.text();
-        let json;
-        try {
-          json = JSON.parse(text);
-        } catch {}
+        const { res, text, json } = await postJson(payload);
 
         if (!res.ok || !json?.success) {
-          console.error("[contact] error:", res.status, text);
+          console.error(`[${formId}] error:`, res.status, text);
           setStatus("Failed to send message. Please try again.", false);
           return;
         }
@@ -64,52 +81,39 @@ document.addEventListener("DOMContentLoaded", () => {
         setStatus("Message sent successfully!");
         form.reset();
       } catch (err) {
-        console.error("[contact] network error:", err);
+        console.error(`[${formId}] network error:`, err);
         setStatus("Network error. Please try again later.", false);
+      } finally {
+        setButtonDisabled(form, false);
       }
     });
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
-    const WORKER_URL = "https://wavegames-worker.salman-khattapp.workers.dev";
-
-    const newsletterForm = document.getElementById("newsletterForm");
-    if (!newsletterForm) return;
+  function bindNewsletterForm() {
+    const form = document.getElementById("newsletterForm");
+    if (!form) return;
 
     const emailInput = document.getElementById("newsletterEmail");
     const statusEl = document.getElementById("newsletterStatus");
+    const setStatus = makeStatus(statusEl);
 
-    const setStatus = (msg, ok = true) => {
-      statusEl.textContent = msg;
-      statusEl.style.color = ok ? "green" : "red";
-    };
-
-    newsletterForm.addEventListener("submit", async (e) => {
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      const email = emailInput.value.trim();
+      const email = (emailInput?.value || "").trim();
       if (!email) {
         setStatus("Please enter your email address.", false);
         return;
       }
 
       try {
+        setButtonDisabled(form, true);
         setStatus("Subscribing...");
 
-        const res = await fetch(WORKER_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type: "newsletter",
-            email,
-          }),
+        const { res, text, json } = await postJson({
+          type: "newsletter",
+          email,
         });
-
-        const text = await res.text();
-        let json;
-        try {
-          json = JSON.parse(text);
-        } catch {}
 
         if (!res.ok || !json?.success) {
           console.error("[newsletter] error:", res.status, text);
@@ -118,16 +122,18 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         setStatus("Successfully subscribed!");
-        newsletterForm.reset();
+        form.reset();
       } catch (err) {
         console.error("[newsletter] network error:", err);
         setStatus("Network error. Please try again later.", false);
+      } finally {
+        setButtonDisabled(form, false);
       }
     });
-  });
+  }
 
   // Contact page form
-  bindForm({
+  bindContactForm({
     formId: "contactForm",
     statusId: "contactStatus",
     nameId: "name",
@@ -137,7 +143,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Home page form
-  bindForm({
+  bindContactForm({
     formId: "homeContactForm",
     statusId: "homeContactStatus",
     nameId: "contactName",
@@ -145,4 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
     subjectId: "contactSubject",
     messageId: "contactMessage",
   });
+
+  // Newsletter form
+  bindNewsletterForm();
 });
