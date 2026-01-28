@@ -50,7 +50,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!res.ok) {
         console.error("[contact.js] Worker error:", res.status, text);
-        setStatus(`Failed to send (HTTP ${res.status}). Check console.`, false);
+        setStatus(`Failed to send, please try again later.`, false);
         return;
       }
 
