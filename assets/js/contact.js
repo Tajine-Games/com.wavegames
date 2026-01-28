@@ -2,26 +2,41 @@ document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("contactForm");
   if (!form) return;
 
-  form.addEventListener("submit", (e) => {
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const name = (document.getElementById("name")?.value || "").trim();
-    const email = (document.getElementById("email")?.value || "").trim();
-    const subject = (document.getElementById("subject")?.value || "").trim();
-    const message = (document.getElementById("message")?.value || "").trim();
+    const payload = {
+      name: document.getElementById("name").value.trim(),
+      email: document.getElementById("email").value.trim(),
+      subject: document.getElementById("subject").value.trim(),
+      message: document.getElementById("message").value.trim(),
+    };
 
-    if (!name || !email || !subject || !message) {
+    if (!payload.name || !payload.email || !payload.subject || !payload.message) {
       alert("Please fill in all fields.");
       return;
     }
 
-    const to = "amine.abourifa.games@gmail.com";
-    const fullSubject = encodeURIComponent(subject);
-    const body = encodeURIComponent(
-      `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}\n`,
-    );
+    try {
+      const res = await fetch(
+        "https://wavegames-worker.salman-khattapp.workers.dev",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
 
-    // Opens user's mail client with prefilled data
-    window.location.href = `mailto:${to}?subject=${fullSubject}&body=${body}`;
+      const result = await res.json();
+
+      if (result.success) {
+        alert("Message sent successfully!");
+        form.reset();
+      } else {
+        alert("Failed to send message.");
+      }
+    } catch (err) {
+      alert("Network error. Please try again.");
+    }
   });
 });
