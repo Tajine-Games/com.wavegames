@@ -2002,6 +2002,7 @@ li {
 }
 .banner-section.terms {
   background-image: url(../images/terms.png);
+  background-size: 50%;
   background-position: bottom right;
   background-repeat: no-repeat;
 }
